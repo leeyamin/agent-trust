@@ -6,7 +6,7 @@ import json
 import uuid
 from pathlib import Path
 
-import httpx
+import httpx2 as httpx
 
 SCOPES = ["in_scope", "out_of_scope", "near_miss"]
 A2A_HEADERS = {"A2A-Version": "1.0"}
@@ -88,7 +88,7 @@ async def run(args: argparse.Namespace) -> None:
 
             output_path = output_dir / scope / f"{agent_name}.jsonl"
             save_results(results, output_path)
-            print(f"  → {output_path}")
+            print(f"  -> {output_path}")
 
 
 def main() -> None:

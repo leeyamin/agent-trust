@@ -92,7 +92,7 @@ def save_evaluations(results: dict, output_dir: Path, method: str) -> None:
         output_path = method_dir / f"{agent_name}.json"
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(evaluation, f, indent=2, ensure_ascii=False)
-        print(f"\n{agent_name}: trust_score = {evaluation['trust_score']:.2f}/100 → {output_path}")
+        print(f"\n{agent_name}: trust_score = {evaluation['trust_score']:.2f}/100 -> {output_path}")
 
 
 # --- DeBERTa method ---

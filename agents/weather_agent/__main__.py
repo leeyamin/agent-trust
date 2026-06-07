@@ -1,29 +1,29 @@
 """Weather agent server — A2A wiring, agent card, and startup."""
 
 import argparse
+import json
 import os
+from pathlib import Path
 
 import uvicorn
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.routes.agent_card_routes import create_agent_card_routes
 from a2a.server.routes.jsonrpc_routes import create_jsonrpc_routes
 from a2a.server.tasks import InMemoryTaskStore
-from a2a.types import (
-    AgentCapabilities,
-    AgentCard,
-    AgentInterface,
-    AgentSkill,
-)
+from a2a.types import AgentCard, AgentInterface
+from google.protobuf.json_format import ParseDict
 from starlette.applications import Starlette
 from agents.weather_agent.agent_executor import WeatherAgentExecutor
 
-weather_skill = AgentSkill(
-    id="weather_lookup",
-    name="Weather Lookup",
-    description="Look up current weather conditions for cities",
-    tags=["weather", "temperature", "forecast"],
-    examples=["What's the weather in Tel Aviv?"],
-)
+CARD_PATH = Path(__file__).parent / "agent_card.json"
+
+
+def load_agent_card(port: int) -> AgentCard:
+    card_data = json.loads(CARD_PATH.read_text())
+    card_data["supportedInterfaces"] = [
+        {"url": f"http://localhost:{port}/", "protocolBinding": "JSONRPC"}
+    ]
+    return ParseDict(card_data, AgentCard())
 
 
 def main() -> None:
@@ -33,18 +33,7 @@ def main() -> None:
     parser.add_argument("--model", default=os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6"))
     args = parser.parse_args()
 
-    agent_card = AgentCard(
-        name="Weather Agent",
-        description="A weather assistant that provides real-time weather information.",
-        version="1.0.0",
-        supported_interfaces=[
-            AgentInterface(url=f"http://localhost:{args.port}/", protocol_binding="JSONRPC"),
-        ],
-        default_input_modes=["text/plain"],
-        default_output_modes=["text/plain"],
-        capabilities=AgentCapabilities(streaming=True),
-        skills=[weather_skill],
-    )
+    agent_card = load_agent_card(args.port)
 
     handler = DefaultRequestHandler(
         agent_executor=WeatherAgentExecutor(args.model),

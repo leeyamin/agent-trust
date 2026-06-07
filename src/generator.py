@@ -7,7 +7,7 @@ import os
 import re
 from pathlib import Path
 
-import httpx
+import httpx2 as httpx
 from claude_agent_sdk import AssistantMessage, ClaudeAgentOptions, ResultMessage, query
 
 SYSTEM_PROMPTS = {
@@ -136,7 +136,7 @@ async def run(args: argparse.Namespace) -> None:
     output_path = Path(args.output_dir) / args.scope / f"{agent_name}.jsonl"
     save_prompts(prompts, output_path)
 
-    print(f"Generated {len(prompts)} {args.scope} prompts → {output_path}")
+    print(f"Generated {len(prompts)} {args.scope} prompts -> {output_path}")
 
 
 def main() -> None:
