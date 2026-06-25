@@ -5,11 +5,14 @@ build-backend = "hatchling.build"
 [project]
 name = "agent-trust"
 version = "0.1.0"
-description = ""
+description = "Capability contract validation framework for A2A-protocol agents"
+license = "Apache-2.0"
 requires-python = ">=3.11"
 dependencies = [
     "a2a-sdk",
     "claude-agent-sdk",
+    "mlflow>=3.5",
+    "pydantic>=2.0",
     "transformers>=4.40",
     "torch>=2.0",
     "httpx2>=2.3.0",
@@ -20,9 +23,20 @@ dev = [
     "pytest",
     "ruff",
 ]
+viz = [
+    "plotly>=6.0",
+    "squarify>=0.4",
+    "kaleido>=0.2",
+]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src", "agents"]
+packages = ["agenttrust", "agents"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

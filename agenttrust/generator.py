@@ -1,14 +1,16 @@
-"""Agent-agnostic prompt generator — creates natural-language prompts from an agent card."""
-
 import argparse
 import asyncio
 import json
+import logging
 import os
-import re
 from pathlib import Path
 
 import httpx2 as httpx
 from claude_agent_sdk import AssistantMessage, ClaudeAgentOptions, ResultMessage, query
+
+from agenttrust.models import SCOPES, fetch_agent_card, strip_markdown_fences
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPTS = {
     "in_scope": (
@@ -44,23 +46,9 @@ SYSTEM_PROMPTS = {
     ),
 }
 
-AGENT_CARD_PATH = "/.well-known/agent-card.json"
-
-
-async def fetch_agent_card(agent_url: str) -> dict:
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(f"{agent_url.rstrip('/')}{AGENT_CARD_PATH}")
-        resp.raise_for_status()
-        return resp.json()
-
 
 def build_card_context(agent_card: dict) -> str:
-    lines = [
-        f"Agent: {agent_card['name']}",
-        f"Description: {agent_card['description']}",
-        "",
-        "Skills:",
-    ]
+    lines = [f"Agent: {agent_card['name']}", f"Description: {agent_card['description']}", "", "Skills:"]
 
     for skill in agent_card.get("skills", []):
         entry = f"- {skill['name']}: {skill['description']}"
@@ -98,12 +86,7 @@ def build_scope_instruction(count: int, scope: str) -> str:
 async def generate_prompts(agent_card: dict, count: int, model: str, scope: str) -> list[str]:
     prompt = build_card_context(agent_card) + "\n\n" + build_scope_instruction(count, scope)
 
-    options = ClaudeAgentOptions(
-        model=model,
-        permission_mode="plan",
-        system_prompt=SYSTEM_PROMPTS[scope],
-        max_turns=2,
-    )
+    options = ClaudeAgentOptions(model=model, permission_mode="plan", system_prompt=SYSTEM_PROMPTS[scope], max_turns=2)
 
     response_text = ""
     async for msg in query(prompt=prompt, options=options):
@@ -115,10 +98,7 @@ async def generate_prompts(agent_card: dict, count: int, model: str, scope: str)
             if msg.result:
                 response_text = msg.result
 
-    cleaned = re.sub(r"^```(?:json)?\s*\n?", "", response_text.strip())
-    cleaned = re.sub(r"\n?```\s*$", "", cleaned)
-
-    return json.loads(cleaned)
+    return json.loads(strip_markdown_fences(response_text))
 
 
 def save_prompts(prompts: list[str], output_path: Path) -> None:
@@ -129,27 +109,26 @@ def save_prompts(prompts: list[str], output_path: Path) -> None:
 
 
 async def run(args: argparse.Namespace) -> None:
-    card = await fetch_agent_card(args.agent_url)
+    async with httpx.AsyncClient() as client:
+        card = await fetch_agent_card(client, args.agent_url)
     prompts = await generate_prompts(card, args.count, args.model, args.scope)
 
     agent_name = card["name"].lower().replace(" ", "_")
     output_path = Path(args.output_dir) / args.scope / f"{agent_name}.jsonl"
     save_prompts(prompts, output_path)
 
-    print(f"Generated {len(prompts)} {args.scope} prompts -> {output_path}")
+    logger.info("Generated %d %s prompts -> %s", len(prompts), args.scope, output_path)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate prompts for an agent")
     parser.add_argument("agent_url", help="URL of the running agent")
     parser.add_argument("--count", type=int, default=20)
-    parser.add_argument("--scope", choices=["in_scope", "out_of_scope", "near_miss"], default="in_scope")
+    parser.add_argument("--scope", choices=SCOPES, default="in_scope")
     parser.add_argument("--output-dir", default="generated_prompts")
-    parser.add_argument(
-        "--model",
-        default=os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6"),
-    )
+    parser.add_argument("--model", default=os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5"))
     args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     asyncio.run(run(args))
 
 

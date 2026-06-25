@@ -1,5 +1,3 @@
-"""Weather agent executor."""
-
 import httpx2 as httpx
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
@@ -7,9 +5,10 @@ from a2a.types import Message, Part, Role
 from claude_agent_sdk import (
     AssistantMessage,
     ClaudeAgentOptions,
+    ClaudeSDKClient,
     ResultMessage,
+    TextBlock,
     create_sdk_mcp_server,
-    query,
     tool,
 )
 
@@ -43,13 +42,16 @@ async def get_weather(args: dict) -> dict:
         name = location.get("name", city)
         country = location.get("country", "")
 
-        weather_resp = await client.get(FORECAST_URL, params={
-            "latitude": lat,
-            "longitude": lon,
-            "current": "temperature_2m,weather_code,wind_speed_10m",
-            "temperature_unit": "fahrenheit",
-            "wind_speed_unit": "mph",
-        })
+        weather_resp = await client.get(
+            FORECAST_URL,
+            params={
+                "latitude": lat,
+                "longitude": lon,
+                "current": "temperature_2m,weather_code,wind_speed_10m",
+                "temperature_unit": "fahrenheit",
+                "wind_speed_unit": "mph",
+            },
+        )
         weather_data = weather_resp.json()
 
         current = weather_data.get("current", {})
@@ -57,21 +59,10 @@ async def get_weather(args: dict) -> dict:
         code = current.get("weather_code")
         wind = current.get("wind_speed_10m")
 
-        return {
-            "content": [
-                {
-                    "type": "text",
-                    "text": f"{name}, {country}: {temp}°F, WMO code {code}, wind {wind} mph",
-                }
-            ]
-        }
+        return {"content": [{"type": "text", "text": f"{name}, {country}: {temp}°F, WMO code {code}, wind {wind} mph"}]}
 
 
-weather_server = create_sdk_mcp_server(
-    name="weather",
-    version="1.0.0",
-    tools=[get_weather],
-)
+weather_server = create_sdk_mcp_server(name="weather", version="1.0.0", tools=[get_weather])
 
 
 class WeatherAgentExecutor(AgentExecutor):
@@ -96,17 +87,18 @@ class WeatherAgentExecutor(AgentExecutor):
         )
 
         response_text = ""
-        async for msg in query(prompt=prompt, options=options):
-            if isinstance(msg, AssistantMessage):
-                for block in msg.content:
-                    if hasattr(block, "text"):
-                        response_text += block.text
-            elif isinstance(msg, ResultMessage):
-                if msg.result:
-                    response_text = msg.result
-        await event_queue.enqueue_event(
-            Message(role=Role.ROLE_AGENT, parts=[Part(text=response_text)])
-        )
+        async with ClaudeSDKClient(options=options) as client:
+            await client.query(prompt)
+            async for msg in client.receive_response():
+                if isinstance(msg, AssistantMessage):
+                    for block in msg.content:
+                        if isinstance(block, TextBlock):
+                            response_text += block.text
+                elif isinstance(msg, ResultMessage):
+                    if msg.result:
+                        response_text = msg.result
+
+        await event_queue.enqueue_event(Message(role=Role.ROLE_AGENT, parts=[Part(text=response_text)]))
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
-        raise NotImplementedError("Cancel not supported")
+        raise RuntimeError("WeatherAgentExecutor does not support cancellation")

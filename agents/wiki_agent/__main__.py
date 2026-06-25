@@ -1,5 +1,3 @@
-"""Wikipedia agent server — A2A wiring, agent card, and startup."""
-
 import argparse
 import json
 import os
@@ -20,9 +18,7 @@ CARD_PATH = Path(__file__).parent / "agent_card.json"
 
 def load_agent_card(port: int) -> AgentCard:
     card_data = json.loads(CARD_PATH.read_text())
-    card_data["supportedInterfaces"] = [
-        {"url": f"http://localhost:{port}/", "protocolBinding": "JSONRPC"}
-    ]
+    card_data["supportedInterfaces"] = [{"url": f"http://localhost:{port}/", "protocolBinding": "JSONRPC"}]
     return ParseDict(card_data, AgentCard())
 
 
@@ -36,9 +32,7 @@ def main() -> None:
     agent_card = load_agent_card(args.port)
 
     handler = DefaultRequestHandler(
-        agent_executor=WikiAgentExecutor(args.model),
-        task_store=InMemoryTaskStore(),
-        agent_card=agent_card,
+        agent_executor=WikiAgentExecutor(args.model), task_store=InMemoryTaskStore(), agent_card=agent_card
     )
 
     routes = []

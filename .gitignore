@@ -1,12 +1,14 @@
 __pycache__/
-*.py[cod]
-*~
-
 .venv/
 .idea/
+.pytest_cache/
+.ruff_cache/
+
 .claude/
 
 generated_prompts/
 responses/
 evaluations/
-docs/
+
+mlflow.db
+mlartifacts/

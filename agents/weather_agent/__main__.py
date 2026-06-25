@@ -1,5 +1,3 @@
-"""Weather agent server — A2A wiring, agent card, and startup."""
-
 import argparse
 import json
 import os
@@ -10,7 +8,7 @@ from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.routes.agent_card_routes import create_agent_card_routes
 from a2a.server.routes.jsonrpc_routes import create_jsonrpc_routes
 from a2a.server.tasks import InMemoryTaskStore
-from a2a.types import AgentCard, AgentInterface
+from a2a.types import AgentCard
 from google.protobuf.json_format import ParseDict
 from starlette.applications import Starlette
 from agents.weather_agent.agent_executor import WeatherAgentExecutor
@@ -20,9 +18,7 @@ CARD_PATH = Path(__file__).parent / "agent_card.json"
 
 def load_agent_card(port: int) -> AgentCard:
     card_data = json.loads(CARD_PATH.read_text())
-    card_data["supportedInterfaces"] = [
-        {"url": f"http://localhost:{port}/", "protocolBinding": "JSONRPC"}
-    ]
+    card_data["supportedInterfaces"] = [{"url": f"http://localhost:{port}/", "protocolBinding": "JSONRPC"}]
     return ParseDict(card_data, AgentCard())
 
 
@@ -31,14 +27,21 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=int(os.environ.get("AGENT_PORT", "8000")))
     parser.add_argument("--model", default=os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6"))
+    parser.add_argument("--traced", action="store_true", help="Enable MLflow tracing")
     args = parser.parse_args()
+
+    if args.traced:
+        import mlflow
+        import mlflow.anthropic
+
+        mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000"))
+        mlflow.set_experiment("agent-trust")
+        mlflow.anthropic.autolog()  # pyright: ignore[reportPrivateImportUsage]
 
     agent_card = load_agent_card(args.port)
 
     handler = DefaultRequestHandler(
-        agent_executor=WeatherAgentExecutor(args.model),
-        task_store=InMemoryTaskStore(),
-        agent_card=agent_card,
+        agent_executor=WeatherAgentExecutor(args.model), task_store=InMemoryTaskStore(), agent_card=agent_card
     )
 
     routes = []
@@ -47,7 +50,8 @@ def main() -> None:
 
     app = Starlette(routes=routes)
 
-    print(f"Starting weather agent on {args.host}:{args.port}")
+    mode = "traced" if args.traced else "standard"
+    print(f"Starting weather agent on {args.host}:{args.port} (mode={mode})")
     uvicorn.run(app, host=args.host, port=args.port)
 
 
