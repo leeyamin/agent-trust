@@ -1,0 +1,4 @@
+weather_agent: http://localhost:8002
+wiki_agent: http://localhost:8001
+recipe_agent: http://localhost:8003
+trivia_agent: http://localhost:8002

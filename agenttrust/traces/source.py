@@ -1,8 +1,8 @@
 from typing import Protocol
 
 from agenttrust.models import ProbeResult
-from agenttrust.traces.collector import DEFAULT_BUFFER_MS, collect_trace_for_probe
-from agenttrust.traces.models import ProbeTrace
+from agenttrust.traces.collector import collect_trace_for_probe
+from agenttrust.traces.trace_models import ProbeTrace
 
 
 class TraceSource(Protocol):
@@ -12,7 +12,7 @@ class TraceSource(Protocol):
 
 
 class MlflowTraceSource:
-    def __init__(self, buffer_ms: int = DEFAULT_BUFFER_MS) -> None:
+    def __init__(self, buffer_ms: int = 5000) -> None:
         self.buffer_ms = buffer_ms
 
     def collect_trace(
@@ -30,7 +30,8 @@ class NullTraceSource:
         return None
 
 
-def create_trace_source(source_type: str, buffer_ms: int = DEFAULT_BUFFER_MS) -> TraceSource:
+def create_trace_source(source_type: str, buffer_ms: int = 5000) -> TraceSource:
+    """Create a trace source by type: "mlflow" for live traces, "none" for disabled."""
     if source_type == "mlflow":
         return MlflowTraceSource(buffer_ms=buffer_ms)
     if source_type == "none":

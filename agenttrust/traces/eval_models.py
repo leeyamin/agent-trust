@@ -7,8 +7,6 @@ ViolationType = Literal["tool_invocation", "parametric_knowledge", "undeclared_t
 
 class TraceVerdict(BaseModel):
     trace_found: bool
-    tool_names: list[str] = Field(default_factory=list)
-    score: float
     violation_type: ViolationType | None = None
     reason: str
     excluded: bool = False
@@ -17,7 +15,6 @@ class TraceVerdict(BaseModel):
 class ProbeScore(BaseModel):
     prompt: str
     response: str
-    scope: str
     text_score: float | None = None
     trace_verdict: TraceVerdict | None = None
     merged_score: float
@@ -25,10 +22,24 @@ class ProbeScore(BaseModel):
     excluded: bool = False
 
 
+class ToolValidation(BaseModel):
+    tool_name: str
+    verdict: Literal["MAPPED", "UNMAPPED"]
+
+
+class BaselineValidation(BaseModel):
+    tools_evaluated: list[ToolValidation] = Field(default_factory=list)
+
+
+class ProbeTextScore(BaseModel):
+    prompt: str
+    response: str
+    score: float | None = None
+
+
 class CapabilityReport(BaseModel):
-    compliant: bool
     summary: str
-    violation_count: int
+    trace_violation_count: int
     patterns: list[str] = Field(default_factory=list)
     timestamp: str
     run_id: str
@@ -40,3 +51,4 @@ class CapabilityReport(BaseModel):
     traces_found: int = 0
     scope_summaries: dict[str, dict] = Field(default_factory=dict)
     probe_results: list[ProbeScore] = Field(default_factory=list)
+    baseline_validation: BaselineValidation | None = None

@@ -1,5 +1,4 @@
 import argparse
-import asyncio
 import json
 import logging
 import time
@@ -8,16 +7,16 @@ from uuid import uuid4
 
 import httpx2 as httpx
 
-from agenttrust.models import SCOPES, ProbeResult, fetch_agent_card
+from agenttrust.utils import fetch_agent_card
+from agenttrust.models import SCOPES, ProbeResult
 
 logger = logging.getLogger(__name__)
 
 A2A_HEADERS = {"A2A-Version": "1.0"}
 
 
-async def send_message(
-    client: httpx.AsyncClient, agent_url: str, text: str, scope: str, agent_name: str
-) -> ProbeResult:
+async def send_message(client: httpx.AsyncClient, agent_url: str, text: str, agent_name: str) -> ProbeResult:
+    """Send a prompt to the agent via A2A JSON-RPC and parse the response parts with timing."""
     probe_start_ms = int(time.time() * 1000)
 
     payload = {
@@ -32,7 +31,12 @@ async def send_message(
     outcome: str = "response"
 
     if "result" in data:
-        parts = data["result"].get("message", {}).get("parts", [])
+        result = data["result"]
+        parts = result.get("message", {}).get("parts", [])
+        if not parts:
+            task = result.get("task", result)
+            for artifact in task.get("artifacts", []):
+                parts.extend(artifact.get("parts", []))
         text_parts = [p["text"] for p in parts if "text" in p]
         response_text = "\n".join(text_parts) if text_parts else ""
         if not response_text:
@@ -46,7 +50,6 @@ async def send_message(
     return ProbeResult(
         prompt=text,
         response=response_text,
-        scope=scope,
         agent_name=agent_name,
         probe_start_ms=probe_start_ms,
         probe_end_ms=probe_end_ms,
@@ -98,13 +101,12 @@ async def run(args: argparse.Namespace) -> None:
             for i, prompt in enumerate(prompts, 1):
                 logger.info("  [%d/%d] %s...", i, len(prompts), prompt[:60])
                 try:
-                    result = await send_message(client, args.agent_url, prompt, scope, agent_name)
+                    result = await send_message(client, args.agent_url, prompt, agent_name)
                 except httpx.ReadTimeout:
                     logger.warning("Timeout on prompt %d, recording empty response", i)
                     result = ProbeResult(
                         prompt=prompt,
                         response="",
-                        scope=scope,
                         agent_name=agent_name,
                         probe_start_ms=int(time.time() * 1000),
                         probe_end_ms=int(time.time() * 1000),
@@ -115,18 +117,3 @@ async def run(args: argparse.Namespace) -> None:
             output_path = output_dir / scope / f"{agent_name}.jsonl"
             save_results(results, output_path)
             logger.info("  -> %s", output_path)
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Run generated prompts against an agent")
-    parser.add_argument("agent_url", help="URL of the running agent")
-    parser.add_argument("--scope", choices=SCOPES)
-    parser.add_argument("--prompts-dir", default="generated_prompts")
-    parser.add_argument("--output-dir", default="responses")
-    args = parser.parse_args()
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
-    asyncio.run(run(args))
-
-
-if __name__ == "__main__":
-    main()

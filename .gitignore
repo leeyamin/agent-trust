@@ -10,5 +10,7 @@ generated_prompts/
 responses/
 evaluations/
 
+dist/
+
 mlflow.db
 mlartifacts/

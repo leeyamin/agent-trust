@@ -1,0 +1,28 @@
+[project]
+name = "wiki-agent"
+version = "0.0.1"
+description = "Wikipedia lookup agent using LangGraph and OpenAI-compatible LLM."
+license = { text = "Apache" }
+requires-python = ">=3.11"
+dependencies = [
+    "a2a-sdk[http-server]>=1.1.0",
+    "langgraph>=1.2.7",
+    "langchain-core>=1.4.0",
+    "langchain-openai>=0.3.0",
+    "langchain-mcp-adapters>=0.3.0",
+    "openinference-instrumentation-langchain>=0.1.67",
+    "python-dotenv>=1.0.0",
+    "pydantic-settings>=2.14.2",
+    "uvicorn>=0.49.0",
+    "opentelemetry-exporter-otlp>=1.43.0",
+    "urllib3>=2.7.0",
+    "pyasn1>=0.6.3",
+    "mcp>=1.28.1",
+]
+
+[project.scripts]
+server = "wiki_agent.agent:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
