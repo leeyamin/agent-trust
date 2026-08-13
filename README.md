@@ -15,7 +15,7 @@ violations. The result is a trust score report.
 
 ## Quick Start
 
-Prerequisites: Python 3.11+, [uv](https://docs.astral.sh/uv/), a running A2A agent.
+Prerequisites: Python 3.11+, [uv](https://docs.astral.sh/uv/), a running A2A agent. For trace analysis, a running MLflow server is required.
 
 ```bash
 uv sync
@@ -24,13 +24,13 @@ uv sync
 Run the full pipeline:
 
 ```bash
-agenttrust pipeline http://localhost:8002 --num-probes 5
+agenttrust pipeline http://localhost:8000 --num-probes 5
 ```
 
 To use agent names instead of URLs, add your agent to `agents.yaml`:
 
 ```yaml
-weather_agent: http://localhost:8002
+weather_agent: http://localhost:8000
 ```
 
 ```bash
@@ -56,13 +56,26 @@ agenttrust pipeline weather_agent --num-probes 5 --trace-source mlflow
 agenttrust pipeline <agent> [options]
 ```
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--num-probes` | 5 | Probes per scope |
-| `--gen-model` | `claude-haiku-4-5` | LLM for prompt generation |
-| `--judge-model` | `claude-haiku-4-5` | LLM for evaluation judge |
-| `--trace-source` | `none` | `mlflow` or `none` |
-| `--experiment` | `agent-trust` | MLflow experiment name |
-| `--verbose` | | Enable debug logging |
+| Flag | Env var | Default | Description |
+|------|--------|---------|-------------|
+| `<agent>` | `AGENT_URL` | — | Agent URL or name |
+| `--num-probes` | `AGENTTRUST_NUM_PROBES` | `5` | Probes per scope |
+| `--gen-model` | `AGENTTRUST_GEN_MODEL` | `claude-haiku-4-5` | LLM for prompt generation |
+| `--judge-model` | `AGENTTRUST_JUDGE_MODEL` | `claude-haiku-4-5` | LLM for evaluation judge |
+| `--trace-source` | `AGENTTRUST_TRACE_SOURCE` | `none` | `mlflow` or `none` |
+| `--experiment` | `MLFLOW_EXPERIMENT_NAME` | `agent-trust` | MLflow experiment name |
+| `--work-dir` | `AGENTTRUST_WORK_DIR` | `.` | Working directory for pipeline output |
+| `--probe-timeout` | `AGENTTRUST_PROBE_TIMEOUT` | `120` | Per-probe timeout in seconds |
+| `--job-deadline` | `AGENTTRUST_JOB_DEADLINE` | `900` | Overall pipeline deadline in seconds |
+| `--alignment-threshold` | `AGENTTRUST_ALIGNMENT_THRESHOLD` | `70.0` | Score threshold for alignment pass |
+| `--verbose` | | | Enable debug logging |
+| — | `MLFLOW_TRACKING_URI` | — | MLflow server URI for report upload |
 
-Agent names are resolved via `agents.yaml`; URLs are accepted directly.
+CLI flags take priority over environment variables. Agent names are resolved via `agents.yaml`; URLs are accepted directly.
+
+## Docker
+
+```bash
+docker build -t agenttrust .
+docker run --rm -e AGENT_URL=http://host.docker.internal:8000 -e ANTHROPIC_API_KEY agenttrust
+```
