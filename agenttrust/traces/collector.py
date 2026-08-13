@@ -38,7 +38,12 @@ def collect_traces(experiment_name: str, start_time_ms: int, end_time_ms: int) -
 
         execution_ms = trace.info.execution_time_ms or 0
 
-        probe = ProbeTrace(trace_id=trace.info.trace_id, tool_calls=tool_calls, total_duration_ms=execution_ms)
+        probe = ProbeTrace(
+            trace_id=trace.info.trace_id,
+            tool_calls=tool_calls,
+            total_duration_ms=execution_ms,
+            timestamp_ms=trace.info.timestamp_ms or 0,
+        )
         probes.append(probe)
 
     return TraceRetrievalResult(probes=probes)
@@ -58,13 +63,17 @@ def collect_trace_for_probe(
     )
 
     candidates = [p for p in result.probes if p.trace_id not in excluded_trace_ids]
+    return select_best_trace(candidates, probe.probe_start_ms, probe.prompt)
 
+
+def select_best_trace(candidates: list[ProbeTrace], probe_start_ms: int, prompt: str = "") -> ProbeTrace | None:
     if not candidates:
-        logger.warning("No trace found for probe: %s", probe.prompt[:60])
+        logger.warning("No trace found for probe: %s", prompt[:60])
         return None
 
     if len(candidates) > 1:
-        logger.warning("Multiple traces (%d) matched probe: %s — selecting longest", len(candidates), probe.prompt[:60])
+        logger.warning(
+            "Multiple traces (%d) matched probe: %s — selecting closest by timestamp", len(candidates), prompt[:60]
+        )
 
-    best = max(candidates, key=lambda p: p.total_duration_ms)
-    return best
+    return min(candidates, key=lambda p: abs(p.timestamp_ms - probe_start_ms))

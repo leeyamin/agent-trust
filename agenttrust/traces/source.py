@@ -31,7 +31,7 @@ class NullTraceSource:
 
 
 def create_trace_source(source_type: str, buffer_ms: int = 5000) -> TraceSource:
-    """Create a trace source by type: "mlflow" for live traces, "none" for disabled."""
+    """Create a trace source from the given type string."""
     if source_type == "mlflow":
         return MlflowTraceSource(buffer_ms=buffer_ms)
     if source_type == "none":

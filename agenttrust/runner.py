@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 A2A_HEADERS = {"A2A-Version": "1.0"}
 
 
-async def send_message(client: httpx.AsyncClient, agent_url: str, text: str, agent_name: str) -> ProbeResult:
+async def send_message(
+    client: httpx.AsyncClient, agent_url: str, text: str, agent_name: str, timeout: int = 120
+) -> ProbeResult:
     """Send a prompt to the agent via A2A JSON-RPC and parse the response parts with timing."""
     probe_start_ms = int(time.time() * 1000)
 
@@ -25,7 +27,7 @@ async def send_message(client: httpx.AsyncClient, agent_url: str, text: str, age
         "method": "SendMessage",
         "params": {"message": {"messageId": str(uuid4()), "role": "ROLE_USER", "parts": [{"text": text}]}},
     }
-    resp = await client.post(agent_url, json=payload, headers=A2A_HEADERS, timeout=120)
+    resp = await client.post(agent_url, json=payload, headers=A2A_HEADERS, timeout=timeout)
     data = resp.json()
 
     outcome: str = "response"
@@ -101,7 +103,8 @@ async def run(args: argparse.Namespace) -> None:
             for i, prompt in enumerate(prompts, 1):
                 logger.info("  [%d/%d] %s...", i, len(prompts), prompt[:60])
                 try:
-                    result = await send_message(client, args.agent_url, prompt, agent_name)
+                    probe_timeout = getattr(args, "probe_timeout", 120)
+                    result = await send_message(client, args.agent_url, prompt, agent_name, timeout=probe_timeout)
                 except httpx.ReadTimeout:
                     logger.warning("Timeout on prompt %d, recording empty response", i)
                     result = ProbeResult(

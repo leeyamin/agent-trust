@@ -1,5 +1,4 @@
 import argparse
-import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -174,9 +173,11 @@ def build_capability_report(
     allowed_tools: frozenset[str],
     probes_by_scope: dict[str, list[ProbeResult]],
     trace_source_type: str,
-    llm_model: str = "claude-haiku-4-5",
+    llm_model: str,
     baseline_validation: BaselineValidation | None = None,
     baseline_compliance: float = 1.0,
+    evaluation_id: str | None = None,
+    card_hash: str | None = None,
 ) -> CapabilityReport:
     """Assemble text scores, trace verdicts, and baseline validation into a final trust report."""
     traces_enabled = trace_source_type != "none"
@@ -292,6 +293,8 @@ def build_capability_report(
         scope_summaries=scope_summaries,
         probe_results=scored_probes,
         baseline_validation=baseline_validation if traces_enabled else None,
+        evaluation_id=evaluation_id,
+        card_hash=card_hash,
     )
 
 
@@ -310,14 +313,18 @@ def save_capability_report(report: CapabilityReport, output_dir: Path) -> None:
     )
 
 
-async def run_async(args: argparse.Namespace) -> None:
+async def run_async(args: argparse.Namespace) -> list[CapabilityReport]:
     responses_dir = Path(args.responses_dir)
     output_dir = Path(args.output_dir)
+    evaluation_id = getattr(args, "evaluation_id", None)
+    card_hash = getattr(args, "card_hash", None)
 
     trace_source = create_trace_source(args.trace_source)
 
     all_probes = load_probes_by_scope(responses_dir)
     analyzer = TraceAnalyzer(trace_source, args.experiment)
+
+    reports: list[CapabilityReport] = []
 
     for agent_name, agent_probes in all_probes.items():
         paired = analyzer.collect_traces_for_probes(agent_probes)
@@ -353,9 +360,10 @@ async def run_async(args: argparse.Namespace) -> None:
             llm_model=args.llm_model,
             baseline_validation=baseline_validation,
             baseline_compliance=baseline_compliance,
+            evaluation_id=evaluation_id,
+            card_hash=card_hash,
         )
         save_capability_report(report, output_dir)
+        reports.append(report)
 
-
-def run(args: argparse.Namespace) -> None:
-    asyncio.run(run_async(args))
+    return reports

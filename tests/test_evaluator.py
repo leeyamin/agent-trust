@@ -44,7 +44,7 @@ class TestBuildCapabilityReport:
         }
 
         report = build_capability_report(
-            "agent", text_eval_details, verdicts, frozenset({"get_weather"}), probes, "mlflow"
+            "agent", text_eval_details, verdicts, frozenset({"get_weather"}), probes, "mlflow", "claude-haiku-4-5"
         )
 
         assert report.trace_violation_count == 0
@@ -74,7 +74,7 @@ class TestBuildCapabilityReport:
         }
 
         report = build_capability_report(
-            "agent", text_eval_details, verdicts, frozenset({"get_weather"}), probes, "mlflow"
+            "agent", text_eval_details, verdicts, frozenset({"get_weather"}), probes, "mlflow", "claude-haiku-4-5"
         )
 
         assert report.trace_violation_count == 1
@@ -100,7 +100,7 @@ class TestBuildCapabilityReport:
         }
 
         report = build_capability_report(
-            "agent", text_eval_details, verdicts, frozenset({"get_weather"}), probes, "mlflow"
+            "agent", text_eval_details, verdicts, frozenset({"get_weather"}), probes, "mlflow", "claude-haiku-4-5"
         )
         assert report.probe_results[0].text_score is None
         assert report.probe_results[0].merged_score == 0.0
@@ -121,7 +121,7 @@ class TestBuildCapabilityReport:
         }
 
         report = build_capability_report(
-            "agent", text_eval_details, verdicts, frozenset({"get_weather"}), probes, "mlflow"
+            "agent", text_eval_details, verdicts, frozenset({"get_weather"}), probes, "mlflow", "claude-haiku-4-5"
         )
         assert report.probe_results[0].text_score == 0.6
         assert report.probe_results[0].merged_score == pytest.approx(0.3)
@@ -134,7 +134,9 @@ class TestBuildCapabilityReport:
             "in_scope": [ProbeResult(prompt="test", response="ok", agent_name="a", probe_start_ms=0, probe_end_ms=1)]
         }
 
-        report = build_capability_report("agent", text_eval_details, verdicts, frozenset(), probes, "mlflow")
+        report = build_capability_report(
+            "agent", text_eval_details, verdicts, frozenset(), probes, "mlflow", "claude-haiku-4-5"
+        )
 
         assert report.traces_expected == 1
         assert report.traces_found == 0
@@ -152,7 +154,9 @@ class TestBuildCapabilityReport:
         }
 
         with pytest.raises(ValueError, match="Probe/detail count mismatch"):
-            build_capability_report("agent", text_eval_details, verdicts, frozenset(), probes, "mlflow")
+            build_capability_report(
+                "agent", text_eval_details, verdicts, frozenset(), probes, "mlflow", "claude-haiku-4-5"
+            )
 
     def test_mismatched_probe_verdict_count_raises(self) -> None:
         text_eval_details = {"in_scope": [ProbeTextScore(prompt="test", response="ok", score=0.9)]}
@@ -162,7 +166,9 @@ class TestBuildCapabilityReport:
         }
 
         with pytest.raises(ValueError, match="Probe/verdict count mismatch"):
-            build_capability_report("agent", text_eval_details, verdicts, frozenset(), probes, "mlflow")
+            build_capability_report(
+                "agent", text_eval_details, verdicts, frozenset(), probes, "mlflow", "claude-haiku-4-5"
+            )
 
     def test_infrastructure_error_excluded_from_scoring(self) -> None:
         text_eval_details = {
@@ -190,7 +196,7 @@ class TestBuildCapabilityReport:
         }
 
         report = build_capability_report(
-            "agent", text_eval_details, verdicts, frozenset({"get_weather"}), probes, "mlflow"
+            "agent", text_eval_details, verdicts, frozenset({"get_weather"}), probes, "mlflow", "claude-haiku-4-5"
         )
 
         assert report.probes_excluded == 1
@@ -219,7 +225,7 @@ class TestBuildCapabilityReport:
         }
 
         report = build_capability_report(
-            "agent", text_eval_details, verdicts, frozenset({"get_weather"}), probes, "mlflow"
+            "agent", text_eval_details, verdicts, frozenset({"get_weather"}), probes, "mlflow", "claude-haiku-4-5"
         )
 
         assert report.trust_score == 0.0

@@ -13,6 +13,7 @@ class ProbeTrace(BaseModel):
     trace_id: str
     tool_calls: list[ToolCallSpan] = Field(default_factory=list)
     total_duration_ms: int
+    timestamp_ms: int = 0
 
 
 class TraceRetrievalResult(BaseModel):

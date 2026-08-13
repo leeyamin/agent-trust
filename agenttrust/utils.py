@@ -1,3 +1,5 @@
+import hashlib
+import json
 import re
 from typing import Any
 
@@ -17,3 +19,9 @@ def strip_markdown_fences(text: str) -> str:
     """Strip leading/trailing markdown code fences from LLM output."""
     cleaned = re.sub(r"^```(?:json)?\s*\n?", "", text.strip())
     return re.sub(r"\n?```\s*$", "", cleaned)
+
+
+def compute_card_hash(card: dict[str, Any]) -> str:
+    """Compute a sha256-prefixed digest of the canonical JSON representation of an agent card."""
+    canonical = json.dumps(card, sort_keys=True, separators=(",", ":"))
+    return f"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}"

@@ -52,3 +52,12 @@ class CapabilityReport(BaseModel):
     scope_summaries: dict[str, dict] = Field(default_factory=dict)
     probe_results: list[ProbeScore] = Field(default_factory=list)
     baseline_validation: BaselineValidation | None = None
+    evaluation_id: str | None = None
+    card_hash: str | None = None
+    schema_version: str = "v1"
+    judge_model: str | None = None
+    evidence_mode: str | None = None
+    alignment_threshold: float | None = None
+    alignment_passed: bool | None = None
+    started_at: str | None = None
+    completed_at: str | None = None
